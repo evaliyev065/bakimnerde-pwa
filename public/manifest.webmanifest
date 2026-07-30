@@ -1,0 +1,14 @@
+{
+  "name": "Bakımnerde Saha PWA 2.0",
+  "short_name": "Bakımnerde",
+  "description": "Bakımnerde saha personeli görev ve bakım uygulaması",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#0f172a",
+  "lang": "tr",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
