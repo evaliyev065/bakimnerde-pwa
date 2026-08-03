@@ -1,9 +1,9 @@
-import { ArrowLeft, Camera, CheckCircle2, ImagePlus, Info, Upload } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, Download, ImagePlus, Info, LockKeyhole, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { Evidence, EvidencePhase } from "../domain/types";
 import { useJobs } from "../jobs/JobsContext";
-import { apiRequest } from "../lib/api";
+import { apiDownload, apiRequest } from "../lib/api";
 
 const phaseDetails: Record<EvidencePhase, { label: string; target: number; description: string }> = {
   BEFORE: { label: "Bakım öncesi", target: 6, description: "Bakım hedefinin müdahale öncesi farklı açıları" },
@@ -37,11 +37,16 @@ export function PhotoUploadPage() {
   }, [taskId]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (job?.maintenanceStartedAt && phase === "BEFORE") setPhase("AFTER");
+    if (!job?.maintenanceStartedAt && phase !== "BEFORE") setPhase("BEFORE");
+  }, [job?.maintenanceStartedAt, phase]);
 
   const counts = useMemo(() => Object.fromEntries((Object.keys(phaseDetails) as EvidencePhase[]).map((key) => [
     key, evidence.filter((item) => item.phase === key).length,
   ])) as Record<EvidencePhase, number>, [evidence]);
   const remaining = phaseDetails[phase].target - counts[phase];
+  const phaseLocked = phase === "BEFORE" ? Boolean(job?.maintenanceStartedAt) : !job?.maintenanceStartedAt;
 
   function selectFiles(event: ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.target.files ?? []);
@@ -56,7 +61,7 @@ export function PhotoUploadPage() {
 
   async function upload(event: FormEvent) {
     event.preventDefault();
-    if (files.length === 0 || remaining <= 0) return;
+    if (phaseLocked || files.length === 0 || remaining <= 0) return;
     setUploading(true);
     setError("");
     try {
@@ -86,15 +91,20 @@ export function PhotoUploadPage() {
     }
   }
 
+  async function downloadAll() {
+    try { await apiDownload("/job-evidence-download-all", { jobId: taskId }, `${job?.id ?? taskId}-saha-fotograflari.zip`); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Fotoğraflar indirilemedi."); }
+  }
+
   if (!job && !loading) return <div className="empty-card"><h2>Görev bulunamadı</h2><Link to="/tasks">Görevlerime dön</Link></div>;
 
   return <section className="page-stack subpage">
     <Link to={`/task/${taskId}`} className="back"><ArrowLeft /> İş detayına dön</Link>
     <div className="subpage-heading"><span><Camera /></span><div><p className="kicker">{job?.id ?? "SAHA KANITI"}</p><h1>Fotoğraf yükleme</h1><p>Her fotoğraf ilgili işin güncel çevrimine kanıt olarak kaydedilir.</p></div></div>
-    <div className="photo-progress">{(Object.keys(phaseDetails) as EvidencePhase[]).map((key) => <button type="button" className={`${phase === key ? "is-active" : ""} ${counts[key] === phaseDetails[key].target ? "is-complete" : ""}`} onClick={() => { setPhase(key); setFiles([]); }} key={key}><span>{counts[key] === phaseDetails[key].target ? <CheckCircle2 /> : <Camera />}</span><b>{phaseDetails[key].label}</b><small>{counts[key]}/{phaseDetails[key].target}</small></button>)}</div>
+    <div className="photo-progress">{(Object.keys(phaseDetails) as EvidencePhase[]).map((key) => { const locked = key === "BEFORE" ? Boolean(job?.maintenanceStartedAt) : !job?.maintenanceStartedAt; return <button type="button" disabled={locked} className={`${phase === key ? "is-active" : ""} ${counts[key] === phaseDetails[key].target ? "is-complete" : ""}`} onClick={() => { setPhase(key); setFiles([]); }} key={key}><span>{locked ? <LockKeyhole /> : counts[key] === phaseDetails[key].target ? <CheckCircle2 /> : <Camera />}</span><b>{phaseDetails[key].label}</b><small>{locked ? "Kilitli" : `${counts[key]}/${phaseDetails[key].target}`}</small></button>; })}</div>
     {loading ? <div className="loading-card">Fotoğraflar yükleniyor…</div> : <form className="upload-card" onSubmit={upload}>
       <div className="upload-heading"><div><p className="kicker">{phaseDetails[phase].label}</p><h2>{phaseDetails[phase].description}</h2></div><b>{remaining > 0 ? `${remaining} eksik` : "Tamam"}</b></div>
-      {remaining > 0 ? <>
+      {phaseLocked ? <div className="phase-locked"><LockKeyhole /><div><b>{phase === "BEFORE" ? "Bakım öncesi aşaması kapandı" : "Önce bakımı başlatın"}</b><span>{phase === "BEFORE" ? "Bakım başladıktan sonra öncesi fotoğrafı eklenemez." : "Form ve diğer fotoğraflar Bakıma Başla işleminden sonra açılır."}</span></div></div> : remaining > 0 ? <>
         <label className="file-drop"><input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple onChange={selectFiles} /><span><ImagePlus /></span><b>{files.length > 0 ? `${files.length} fotoğraf seçildi` : "Fotoğraf seç veya kamerayı aç"}</b><small>JPG, PNG veya WebP · dosya başına en fazla 12 MB</small></label>
         <label><span>Fotoğraf açıklaması</span><input maxLength={300} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Örn. Sağ bağlantı terminali" /></label>
         <div className="info-bar"><Info /> Fotoğraflar tarayıcıda sıkıştırılarak yüklenir; seçilen aşama sonradan değiştirilemez.</div>
@@ -103,7 +113,7 @@ export function PhotoUploadPage() {
       </> : <div className="phase-complete"><CheckCircle2 /><div><b>Bu aşama tamamlandı</b><span>Yeni yükleme için diğer fotoğraf aşamasını seçin.</span></div></div>}
     </form>}
     <section className="gallery-section">
-      <div><h2>Yüklenen kanıtlar</h2><span>{evidence.length}/13</span></div>
+      <div><h2>Yüklenen kanıtlar</h2>{evidence.some((item) => item.downloadAvailable) && <button className="gallery-download" type="button" onClick={() => void downloadAll()}><Download /> Tümünü indir</button>}</div>
       {evidence.length === 0 ? <p className="gallery-empty">Henüz fotoğraf yüklenmedi.</p> : <div className="evidence-grid">{evidence.map((item, index) => <article key={item.id}>
         {isDisplayable(item.url) ? <img src={item.url} alt={item.description || `${phaseDetails[item.phase].label} fotoğrafı`} /> : <span className="image-placeholder"><Camera /></span>}
         <div><b>{phaseDetails[item.phase].label} · {index + 1}</b><small>{item.description || "Açıklama yok"}</small></div>

@@ -34,12 +34,19 @@ export interface Job {
   deadlineAt: string;
   contractorAcceptedAt?: string;
   maintenanceStartedAt?: string;
+  maintenanceCompletedAt?: string;
+  platformApprovedAt?: string;
+  cpoApprovedAt?: string;
+  cpoToPlatformPaidAt?: string;
+  contractorPaidAt?: string;
+  closedAt?: string;
   workflowCycle: number;
   cpo: string;
   contractor: string;
   fieldWorkerUserId?: string;
   fieldWorkerName?: string;
   fieldWorkerPhone?: string;
+  amount?: number | null;
 }
 
 export type EvidencePhase = "BEFORE" | "AFTER" | "BRANDED";
@@ -50,6 +57,7 @@ export interface Evidence {
   url: string;
   description: string;
   createdAt: string;
+  downloadAvailable?: boolean;
 }
 
 export interface FieldReport {
@@ -66,4 +74,11 @@ export interface FieldReport {
   notes: string;
   completed: boolean;
   updatedAt: string;
+}
+
+export interface AdditionalRequest {
+  id: string;
+  partSupplyStatus: string;
+  supplyDeadlineAt?: string;
+  cpoPrice?: number | null;
 }

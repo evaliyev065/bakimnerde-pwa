@@ -9,11 +9,11 @@ import { App } from "./App";
 const principal = {
   userId: "000000000000000000000007",
   tenantId: "000000000000000000000003",
-  tenantKey: "marmara-teknik",
-  tenantName: "Marmara Teknik",
+  tenantKey: "wattarya-teknik",
+  tenantName: "WattaryaTeknik",
   tenantType: "CONTRACTOR",
   name: "Ahmet Kaya",
-  email: "saha@marmarateknik.test",
+  email: "saha@wattaryateknik.test",
   role: "FIELD_WORKER",
 };
 const job = {
@@ -30,7 +30,7 @@ const job = {
   deadlineAt: "2026-08-01T08:00:00.000Z",
   contractorAcceptedAt: "2026-07-24T08:00:00.000Z",
   workflowCycle: 1,
-  cpo: "VoltGo",
+  cpo: "Wattarya",
   contractor: "Bakımnerde Saha Ağı",
   fieldWorkerUserId: principal.userId,
   fieldWorkerName: principal.name,
@@ -52,7 +52,7 @@ describe("Bakımnerde saha PWA 2.0", () => {
     renderApp("/dashboard");
     expect(await screen.findByText("İstanbul Havalimanı P3")).toBeInTheDocument();
     expect(screen.getByText("1 aktif görev")).toBeInTheDocument();
-    expect(screen.getByText(/Marmara Teknik/)).toBeInTheDocument();
+    expect(screen.getByText(/WattaryaTeknik/)).toBeInTheDocument();
   });
 
   it("iş detayında form ve fotoğrafı ayrı çalışma alanları olarak sunar", async () => {

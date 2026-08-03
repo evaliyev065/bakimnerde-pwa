@@ -64,6 +64,23 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   }
 }
 
+export async function apiDownload(path: string, payload: Record<string, unknown>, fileName: string): Promise<void> {
+  const token = localStorage.getItem(FIELD_TOKEN_KEY) ?? sessionStorage.getItem(FIELD_TOKEN_KEY);
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+    throw new Error(body?.error?.message ?? "Dosyalar indirilemedi.");
+  }
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl; anchor.download = fileName; document.body.append(anchor); anchor.click(); anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 export function readCachedResponse<T>(path: string, body?: string): Promise<T | undefined> {
   return readCache<T>(cacheKey(path, body));
 }
