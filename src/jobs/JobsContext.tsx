@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Job } from "../domain/types";
 import { apiRequest, readCachedResponse } from "../lib/api";
+import { usePreferences } from "../app/PreferencesContext";
 
 const JOBS_LOCAL_KEY = "bakimnerde_pwa_jobs";
 
@@ -15,6 +16,7 @@ interface JobsValue {
 const JobsContext = createContext<JobsValue | null>(null);
 
 export function JobsProvider({ children }: { children: ReactNode }) {
+  const { t } = usePreferences();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -26,11 +28,11 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       setJobs(result);
       localStorage.setItem(JOBS_LOCAL_KEY, JSON.stringify(result));
     } catch (reason) {
-      if (!localStorage.getItem(JOBS_LOCAL_KEY)) setError(reason instanceof Error ? reason.message : "Görevler alınamadı.");
+      if (!localStorage.getItem(JOBS_LOCAL_KEY)) setError(reason instanceof Error ? reason.message : t("Görevler alınamadı.", "Tasks could not be loaded."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     try {

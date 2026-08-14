@@ -5,7 +5,7 @@ export const FIELD_TOKEN_KEY = "bakimnerde_pwa_token";
 
 interface ApiEnvelope<T> {
   data: T;
-  error?: { message?: string };
+  error?: { code?: string; message?: string };
 }
 
 const cacheablePaths = new Set([
@@ -14,7 +14,7 @@ const cacheablePaths = new Set([
 ]);
 const queueablePaths = new Set([
   "/jobs-status-change", "/job-evidence-add", "/job-field-report-save",
-  "/job-messages-send", "/additional-requests-create", "/notifications-read",
+  "/job-messages-send", "/additional-requests-create", "/additional-requests-field-confirm", "/notifications-read",
 ]);
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -40,7 +40,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   try {
     const response = await fetch(`${API_URL}${path}`, prepared);
     const envelope = await response.json() as ApiEnvelope<T>;
-    if (!response.ok) throw new ApiResponseError(response.status, envelope.error?.message ?? "İşlem tamamlanamadı.");
+    if (!response.ok) throw new ApiResponseError(response.status, localizedError(envelope.error, "İşlem tamamlanamadı.", "The operation could not be completed."));
     if (cacheablePaths.has(path)) await writeCache(key, envelope.data);
     if (path === "/auth-field-login") {
       const principal = (envelope.data as { principal?: unknown }).principal;
@@ -58,7 +58,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
       await applyOptimisticCache(path, body, operationId);
       return { queued: true, offline: true, id: operationId } as T;
     }
-    throw new Error("Bakımnerde servisine ulaşılamadı. Çevrimdışı kayıt bulunamadı.");
+    throw new Error(localText("Bakımnerde servisine ulaşılamadı. Çevrimdışı kayıt bulunamadı.", "The Bakımnerde service could not be reached and no offline record was found."));
   } finally {
     globalThis.clearTimeout(timeout);
   }
@@ -72,8 +72,8 @@ export async function apiDownload(path: string, payload: Record<string, unknown>
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-    throw new Error(body?.error?.message ?? "Dosyalar indirilemedi.");
+    const body = await response.json().catch(() => null) as { error?: { code?: string; message?: string } } | null;
+    throw new Error(localizedError(body?.error, "Dosyalar indirilemedi.", "Files could not be downloaded."));
   }
   const objectUrl = URL.createObjectURL(await response.blob());
   const anchor = document.createElement("a");
@@ -118,7 +118,7 @@ async function applyOptimisticCache(path: string, bodyText: string, operationId:
     const key = cacheKey("/job-messages-list", JSON.stringify({ jobId }));
     const items = await readCache<Array<Record<string, unknown>>>(key) ?? [];
     await writeCache(key, [...items, {
-      id: operationId, text: body.text, senderName: "Ben", senderTenantName: "Saha ekibi",
+      id: operationId, text: body.text, senderName: localText("Ben", "Me"), senderTenantName: localText("Saha ekibi", "Field team"),
       mine: true, createdAt: new Date().toISOString(), pendingSync: true,
     }]);
   }
@@ -129,6 +129,16 @@ async function applyOptimisticCache(path: string, bodyText: string, operationId:
       id: operationId, type: body.type, description: body.description,
       status: "PENDING_PRICING", partSupplyStatus: "PENDING_PRICING", pendingSync: true,
     }, ...items]);
+  }
+  if (path === "/additional-requests-field-confirm") {
+    const key = cacheKey("/additional-requests-list", JSON.stringify({ jobId }));
+    const items = await readCache<Array<Record<string, unknown>>>(key) ?? [];
+    await writeCache(key, items.map((item) => item.id === body.id ? {
+      ...item,
+      partSupplyStatus: "SUPPLIED",
+      fieldConfirmedAt: new Date().toISOString(),
+      confirmationPendingSync: true,
+    } : item));
   }
   if (path === "/jobs-status-change") {
     const key = cacheKey("/jobs-list", undefined);
@@ -153,4 +163,13 @@ async function applyOptimisticCache(path: string, bodyText: string, operationId:
 
 class ApiResponseError extends Error {
   public constructor(public readonly status: number, message: string) { super(message); }
+}
+
+function localText(turkish: string, english: string): string {
+  return document.documentElement.lang === "en" ? english : turkish;
+}
+
+function localizedError(error: { code?: string; message?: string } | undefined, turkishFallback: string, englishFallback: string): string {
+  if (document.documentElement.lang !== "en") return error?.message ?? turkishFallback;
+  return error?.code ? `${englishFallback} (${error.code})` : englishFallback;
 }

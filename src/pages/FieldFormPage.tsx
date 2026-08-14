@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import type { FieldReport } from "../domain/types";
 import { useJobs } from "../jobs/JobsContext";
 import { apiRequest } from "../lib/api";
+import { usePreferences } from "../app/PreferencesContext";
 
 interface FormState {
   serviceType: string;
@@ -28,6 +29,7 @@ const initialForm: FormState = {
 };
 
 export function FieldFormPage() {
+  const { t } = usePreferences();
   const { taskId = "" } = useParams();
   const { findJob } = useJobs();
   const job = findJob(taskId);
@@ -54,9 +56,9 @@ export function FieldFormPage() {
         });
         setSaved(report.completed);
       })
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Form alınamadı."))
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : t("Form alınamadı.", "Form could not be loaded.")))
       .finally(() => setLoading(false));
-  }, [taskId]);
+  }, [t, taskId]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -75,45 +77,46 @@ export function FieldFormPage() {
       });
       setSaved(true);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Form kaydedilemedi.");
+      setError(reason instanceof Error ? reason.message : t("Form kaydedilemedi.", "Form could not be saved."));
     } finally {
       setSaving(false);
     }
   }
 
-  if (!job && !loading) return <div className="empty-card"><h2>Görev bulunamadı</h2><Link to="/tasks">Görevlerime dön</Link></div>;
+  if (!job && !loading) return <div className="empty-card"><h2>{t("Görev bulunamadı", "Task not found")}</h2><Link to="/tasks">{t("Görevlerime dön", "Back to my tasks")}</Link></div>;
 
   return <section className="page-stack subpage">
-    <Link to={`/task/${taskId}`} className="back"><ArrowLeft /> İş detayına dön</Link>
-    <div className="subpage-heading"><span><ClipboardPenLine /></span><div><p className="kicker">{job?.id ?? "SAHA FORMU"}</p><h1>Saha işlem formu</h1><p>Seçimler standart rapora dönüşür; açıklama işi teknik olarak tamamlar.</p></div></div>
-    {loading ? <div className="loading-card">Form yükleniyor…</div> : <form className="field-form card-section" onSubmit={submit}>
-      <SelectField label="Hizmet türü" value={form.serviceType} set={(serviceType) => setForm({ ...form, serviceType })} options={[
-        ["PREVENTIVE_MAINTENANCE", "Periyodik bakım"], ["FAULT_REPAIR", "Arıza müdahalesi"], ["INSTALLATION_CHECK", "Kurulum kontrolü"],
+    <Link to={`/task/${taskId}`} className="back"><ArrowLeft /> {t("İş detayına dön", "Back to job details")}</Link>
+    <div className="subpage-heading"><span><ClipboardPenLine /></span><div><p className="kicker">{job?.id ?? t("SAHA FORMU", "FIELD FORM")}</p><h1>{t("Saha işlem formu", "Field service form")}</h1><p>{t("Seçimler standart rapora dönüşür; açıklama işi teknik olarak tamamlar.", "Selections become a standard report; your notes complete the technical record.")}</p></div></div>
+    {loading ? <div className="loading-card">{t("Form yükleniyor…", "Loading form…")}</div> : <form className="field-form card-section" onSubmit={submit}>
+      <SelectField label={t("Hizmet türü", "Service type")} value={form.serviceType} set={(serviceType) => setForm({ ...form, serviceType })} options={[
+        ["PREVENTIVE_MAINTENANCE", t("Periyodik bakım", "Preventive maintenance")], ["FAULT_REPAIR", t("Arıza müdahalesi", "Fault repair")], ["INSTALLATION_CHECK", t("Kurulum kontrolü", "Installation check")],
       ]} />
-      <SelectField label="Bakım yapılan varlığın son durumu" value={form.equipmentCondition} set={(equipmentCondition) => setForm({ ...form, equipmentCondition })} options={[
-        ["OPERATIONAL", "Çalışır durumda"], ["LIMITED", "Kısıtlı çalışıyor"], ["OUT_OF_SERVICE", "Hizmet dışı"],
+      <SelectField label={t("Bakım yapılan varlığın son durumu", "Final condition of maintained asset")} value={form.equipmentCondition} set={(equipmentCondition) => setForm({ ...form, equipmentCondition })} options={[
+        ["OPERATIONAL", t("Çalışır durumda", "Operational")], ["LIMITED", t("Kısıtlı çalışıyor", "Limited operation")], ["OUT_OF_SERVICE", t("Hizmet dışı", "Out of service")],
       ]} />
-      <SelectField label="Arıza kategorisi" value={form.faultCategory} set={(faultCategory) => setForm({ ...form, faultCategory })} options={[
-        ["ELECTRICAL", "Elektrik"], ["MECHANICAL", "Mekanik"], ["COMMUNICATION", "İletişim"], ["SOFTWARE", "Yazılım"], ["OTHER", "Diğer"],
+      <SelectField label={t("Arıza kategorisi", "Fault category")} value={form.faultCategory} set={(faultCategory) => setForm({ ...form, faultCategory })} options={[
+        ["ELECTRICAL", t("Elektrik", "Electrical")], ["MECHANICAL", t("Mekanik", "Mechanical")], ["COMMUNICATION", t("İletişim", "Communication")], ["SOFTWARE", t("Yazılım", "Software")], ["OTHER", t("Diğer", "Other")],
       ]} />
-      <SelectField label="Uygulanan işlem" value={form.actionTaken} set={(actionTaken) => setForm({ ...form, actionTaken })} options={[
-        ["REPAIRED", "Yerinde onarıldı"], ["PART_REQUIRED", "Parça gerekiyor"], ["MONITORING", "Takibe alındı"], ["NO_FAULT", "Arıza görülmedi"],
+      <SelectField label={t("Uygulanan işlem", "Action taken")} value={form.actionTaken} set={(actionTaken) => setForm({ ...form, actionTaken })} options={[
+        ["REPAIRED", t("Yerinde onarıldı", "Repaired on site")], ["PART_REQUIRED", t("Parça gerekiyor", "Part required")], ["MONITORING", t("Takibe alındı", "Monitoring")], ["NO_FAULT", t("Arıza görülmedi", "No fault found")],
       ]} />
-      <SelectField label="Güvenlik sonucu" value={form.safetyResult} set={(safetyResult) => setForm({ ...form, safetyResult })} options={[
-        ["SAFE", "Alan güvenli"], ["ISOLATED", "Enerji izole edildi"], ["ESCALATED", "Güvenlik eskalasyonu açıldı"],
+      <SelectField label={t("Güvenlik sonucu", "Safety result")} value={form.safetyResult} set={(safetyResult) => setForm({ ...form, safetyResult })} options={[
+        ["SAFE", t("Alan güvenli", "Area safe")], ["ISOLATED", t("Enerji izole edildi", "Energy isolated")], ["ESCALATED", t("Güvenlik eskalasyonu açıldı", "Safety escalation opened")],
       ]} />
       <div className="measurement-grid">
-        <label><span>Giriş voltajı (V)</span><input inputMode="decimal" min="0" max="1000" step="0.1" type="number" value={form.inputVoltage} onChange={(event) => setForm({ ...form, inputVoltage: event.target.value })} placeholder="Örn. 400" /></label>
-        <label><span>Çıkış voltajı (V)</span><input inputMode="decimal" min="0" max="1000" step="0.1" type="number" value={form.outputVoltage} onChange={(event) => setForm({ ...form, outputVoltage: event.target.value })} placeholder="Örn. 398" /></label>
+        <label><span>{t("Giriş voltajı (V)", "Input voltage (V)")}</span><input inputMode="decimal" min="0" max="1000" step="0.1" type="number" value={form.inputVoltage} onChange={(event) => setForm({ ...form, inputVoltage: event.target.value })} placeholder={t("Örn. 400", "E.g. 400")} /></label>
+        <label><span>{t("Çıkış voltajı (V)", "Output voltage (V)")}</span><input inputMode="decimal" min="0" max="1000" step="0.1" type="number" value={form.outputVoltage} onChange={(event) => setForm({ ...form, outputVoltage: event.target.value })} placeholder={t("Örn. 398", "E.g. 398")} /></label>
       </div>
-      <label><span>Teknik açıklama</span><textarea required minLength={10} maxLength={2000} rows={6} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Tespit edilen durum, uygulanan işlem ve test sonucunu yazın." /><small>{form.notes.length}/2000</small></label>
+      <label><span>{t("Teknik açıklama", "Technical notes")}</span><textarea required minLength={10} maxLength={2000} rows={6} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder={t("Tespit edilen durum, uygulanan işlem ve test sonucunu yazın.", "Describe the finding, action taken, and test result.")} /><small>{form.notes.length}/2000</small></label>
       {error && <div className="form-error" role="alert">{error}</div>}
-      {saved && <div className="saved-banner"><CheckCircle2 /> Form iş çevrimine kaydedildi.</div>}
-      <button className="primary-action" disabled={saving}><Save /> {saving ? "Kaydediliyor…" : "Formu kaydet"}</button>
+      {saved && <div className="saved-banner"><CheckCircle2 /> {t("Form iş çevrimine kaydedildi.", "Form saved to the job cycle.")}</div>}
+      <button className="primary-action" disabled={saving}><Save /> {saving ? t("Kaydediliyor…", "Saving…") : t("Formu kaydet", "Save form")}</button>
     </form>}
   </section>;
 }
 
 function SelectField({ label, value, set, options }: { label: string; value: string; set(value: string): void; options: Array<[string, string]> }) {
-  return <label><span>{label}</span><select required value={value} onChange={(event) => set(event.target.value)}><option value="">Seçin</option>{options.map(([key, text]) => <option value={key} key={key}>{text}</option>)}</select></label>;
+  const { t } = usePreferences();
+  return <label><span>{label}</span><select required value={value} onChange={(event) => set(event.target.value)}><option value="">{t("Seçin", "Select")}</option>{options.map(([key, text]) => <option value={key} key={key}>{text}</option>)}</select></label>;
 }

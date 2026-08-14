@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Principal } from "../domain/types";
 import { apiRequest, FIELD_TOKEN_KEY } from "../lib/api";
+import { usePreferences } from "../app/PreferencesContext";
 
 interface FieldAuthValue {
   principal: Principal | null;
@@ -14,6 +15,7 @@ const FIELD_PRINCIPAL_KEY = "bakimnerde_pwa_principal";
 const FieldAuthContext = createContext<FieldAuthValue | null>(null);
 
 export function FieldAuthProvider({ children }: { children: ReactNode }) {
+  const { t } = usePreferences();
   const [principal, setPrincipal] = useState<Principal | null>(null);
   const [loading, setLoading] = useState(Boolean(localStorage.getItem(FIELD_TOKEN_KEY) ?? sessionStorage.getItem(FIELD_TOKEN_KEY)));
 
@@ -26,7 +28,7 @@ export function FieldAuthProvider({ children }: { children: ReactNode }) {
     } catch { localStorage.removeItem(FIELD_PRINCIPAL_KEY); }
     apiRequest<Principal>("/auth-me")
       .then((value) => {
-        if (value.role !== "FIELD_WORKER") throw new Error("Bu hesap saha uygulamasını kullanamaz.");
+        if (value.role !== "FIELD_WORKER") throw new Error(t("Bu hesap saha uygulamasını kullanamaz.", "This account cannot use the field application."));
         setPrincipal(value);
         localStorage.setItem(FIELD_PRINCIPAL_KEY, JSON.stringify(value));
       })
@@ -40,7 +42,7 @@ export function FieldAuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   const value = useMemo<FieldAuthValue>(() => ({
     principal,

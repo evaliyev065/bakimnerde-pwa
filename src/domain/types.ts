@@ -28,10 +28,9 @@ export interface Job {
   maintenanceTarget: "DEVICE" | "STATION";
   stationMaintenanceArea?: "GENERAL_COMPONENTS" | "GRID_CONNECTION" | null;
   charger?: string | null;
-  chargerModel?: string | null;
   status: JobStatus;
   appointmentAt?: string;
-  deadlineAt: string;
+  givenDurationAt?: string;
   contractorAcceptedAt?: string;
   maintenanceStartedAt?: string;
   maintenanceCompletedAt?: string;

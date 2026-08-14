@@ -1,6 +1,7 @@
 import { LoaderCircle } from "lucide-react";
 import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useFieldAuth } from "../auth/FieldAuthContext";
+import { usePreferences } from "./PreferencesContext";
 import { JobsProvider } from "../jobs/JobsContext";
 import { MobileShell } from "../layouts/MobileShell";
 import { FieldFormPage } from "../pages/FieldFormPage";
@@ -43,8 +44,9 @@ export function App() {
 
 function RequireFieldSession() {
   const { principal, loading } = useFieldAuth();
+  const { t } = usePreferences();
   const location = useLocation();
-  if (loading) return <div className="app-loading"><LoaderCircle /><b>Saha oturumu doğrulanıyor</b></div>;
+  if (loading) return <div className="app-loading"><LoaderCircle /><b>{t("Saha oturumu doğrulanıyor", "Verifying field session")}</b></div>;
   if (!principal) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   return <Outlet />;
 }

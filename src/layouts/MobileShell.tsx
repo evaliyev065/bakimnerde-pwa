@@ -1,16 +1,11 @@
-import { Bell, ClipboardList, CloudUpload, Home, UserRound, Wifi, WifiOff } from "lucide-react";
+import { Bell, ClipboardList, CloudUpload, Home, Languages, Moon, Sun, UserRound, Wifi, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { apiRequest } from "../lib/api";
 import { requestSystemNotificationPermission, showSystemNotification } from "../notifications/systemNotifications";
 import { pendingCount, synchronizeOutbox } from "../offline/sync";
 import { Brand } from "../shared/Brand";
-
-const items = [
-  { to: "/dashboard", label: "Ana sayfa", icon: Home },
-  { to: "/tasks", label: "Görevlerim", icon: ClipboardList },
-  { to: "/profile", label: "Profilim", icon: UserRound },
-];
+import { usePreferences } from "../app/PreferencesContext";
 
 interface JobNotification {
   id: string; title: string; body: string; jobId: string; jobNumber: string;
@@ -19,6 +14,7 @@ interface JobNotification {
 interface NotificationList { items: JobNotification[]; unreadCount: number }
 
 export function MobileShell() {
+  const { language, locale, theme, t, toggleLanguage, toggleTheme } = usePreferences();
   const [online, setOnline] = useState(navigator.onLine);
   const [pending, setPending] = useState(0);
   const [notifications, setNotifications] = useState<JobNotification[]>([]);
@@ -26,6 +22,11 @@ export function MobileShell() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const knownNotificationIds = useRef<Set<string> | null>(null);
   const navigate = useNavigate();
+  const items = [
+    { to: "/dashboard", label: t("Ana sayfa", "Home"), icon: Home },
+    { to: "/tasks", label: t("Görevlerim", "My tasks"), icon: ClipboardList },
+    { to: "/profile", label: t("Profilim", "Profile"), icon: UserRound },
+  ];
   const loadNotifications = useCallback(async () => {
     const result = await apiRequest<NotificationList>("/notifications-list");
     setNotifications(result.items);
@@ -82,16 +83,18 @@ export function MobileShell() {
     <header className="field-header">
       <Brand className="field-brand" />
       <div className="field-header__actions">
-        <button className={`field-notification ${unreadCount > 0 ? "has-unread" : ""}`} onClick={() => void toggleNotifications()} aria-label={`Bildirimler${unreadCount ? `, ${unreadCount} okunmamış` : ""}`}><Bell />{unreadCount > 0 && <span>{unreadCount > 99 ? "99+" : unreadCount}</span>}</button>
-        <div className={`connection-chip ${online ? "is-online" : ""}`}>{pending > 0 ? <CloudUpload /> : online ? <Wifi /> : <WifiOff />}{pending > 0 ? `${pending} kayıt bekliyor` : online ? "Canlı" : "Çevrimdışı"}</div>
+        <button className="preference-button" type="button" onClick={toggleLanguage} aria-label={language === "tr" ? "Dili İngilizce yap" : "Switch language to Turkish"} title={language === "tr" ? "English" : "Türkçe"}><Languages /><span>{language.toLocaleUpperCase("en-US")}</span></button>
+        <button className="preference-button" type="button" onClick={toggleTheme} aria-label={theme === "light" ? t("Koyu temaya geç", "Switch to dark theme") : t("Açık temaya geç", "Switch to light theme")} title={theme === "light" ? t("Koyu tema", "Dark theme") : t("Açık tema", "Light theme")}>{theme === "light" ? <Moon /> : <Sun />}</button>
+        <button className={`field-notification ${unreadCount > 0 ? "has-unread" : ""}`} onClick={() => void toggleNotifications()} aria-label={`${t("Bildirimler", "Notifications")}${unreadCount ? `, ${unreadCount} ${t("okunmamış", "unread")}` : ""}`}><Bell />{unreadCount > 0 && <span>{unreadCount > 99 ? "99+" : unreadCount}</span>}</button>
+        <div className={`connection-chip ${online ? "is-online" : ""}`}>{pending > 0 ? <CloudUpload /> : online ? <Wifi /> : <WifiOff />}{pending > 0 ? `${pending} ${t("kayıt bekliyor", "records pending")}` : online ? t("Canlı", "Online") : t("Çevrimdışı", "Offline")}</div>
       </div>
       {notificationsOpen && <section className="field-notification-panel">
-        <header><b>İş bildirimleri</b><small>{unreadCount} okunmamış</small></header>
-        {notifications.length === 0 && <p>Yeni bildiriminiz yok.</p>}
-        {notifications.map((item) => <button className={item.readAt ? "" : "is-unread"} key={item.id} onClick={() => void readNotification(item)}><strong>{item.title}</strong><span>{item.body}</span><time>{new Date(item.createdAt).toLocaleString("tr-TR")}</time></button>)}
+        <header><b>{t("İş bildirimleri", "Job notifications")}</b><small>{unreadCount} {t("okunmamış", "unread")}</small></header>
+        {notifications.length === 0 && <p>{t("Yeni bildiriminiz yok.", "You have no new notifications.")}</p>}
+        {notifications.map((item) => <button className={item.readAt ? "" : "is-unread"} key={item.id} onClick={() => void readNotification(item)}><strong>{item.title}</strong><span>{item.body}</span><time>{new Date(item.createdAt).toLocaleString(locale)}</time></button>)}
       </section>}
     </header>
     <main className="field-main"><Outlet /></main>
-    <nav className="bottom-nav" aria-label="Ana menü">{items.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} end={to === "/dashboard"} className={({ isActive }) => isActive ? "is-active" : ""}><Icon /><span>{label}</span></NavLink>)}</nav>
+    <nav className="bottom-nav" aria-label={t("Ana menü", "Main menu")}>{items.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} end={to === "/dashboard"} className={({ isActive }) => isActive ? "is-active" : ""}><Icon /><span>{label}</span></NavLink>)}</nav>
   </div>;
 }
